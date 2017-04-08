@@ -18,7 +18,7 @@ namespace One_BasicConcepts
         {
             semaforo = new Semaphore(20, 20);
             HttpListener listener = new HttpListener();
-            string url = "http://localhost/index.html";
+            string url = "http://localhost/";
             listener.Prefixes.Add(url);
             listener.Start();
 
