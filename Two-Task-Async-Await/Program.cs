@@ -7,11 +7,11 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using One_BasicConcepts;
+
 
 namespace Two_Task_Async_Await
 {
-    class Program
+     class Program
     {
         protected static DateTime timestampStart;
 
@@ -20,52 +20,26 @@ namespace Two_Task_Async_Await
             timestampStart = DateTime.Now;
         }
 
-        static void TimeStamp(string temp)
+        public static void TimeStamp(string temp)
         {
             long elapsed = (long)(DateTime.Now - timestampStart).TotalMilliseconds;
             Console.WriteLine("{0} : {1}", elapsed ,temp);
         }
-
-        static async void StartConnectionListenner(HttpListener listener)//StartConnectionListener StartConnectionListenner
-        {
-            TimeStamp("StartConnectionListenner Thread ID: " + Thread.CurrentThread.ManagedThreadId);
-           
-            HttpListenerContext context = await listener.GetContextAsync();
-
-            semaforo.Release();
-
-            HttpListenerRequest request = context.Request;
-            HttpListenerResponse response = context.Response;
-
-
-            string path = request.RawUrl.LeftOf("?").RightOf("/");
-            Console.WriteLine(path);
-
-            try
-            {
-                string text = File.ReadAllText(path);
-                byte[] data = Encoding.UTF8.GetBytes(text);
-                response.ContentType = "text/html";
-                response.ContentLength64 = data.Length;
-                response.OutputStream.Write(data, 0, data.Length);
-                response.ContentEncoding = Encoding.UTF8;
-                response.StatusCode = 200;
-                response.OutputStream.Close();
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-
-            
-
-        }
         static Semaphore semaforo;
+        static ListenerThreadHandler handler;
 
         static void Main(string[] args)
         {
             semaforo = new Semaphore(20, 20);
+            handler = new ListenerThreadHandler();
+
+            TimeStampStart();
+            for (int i = 0; i < 10; i++)
+            {
+                Console.WriteLine("Resquest #" + i);
+                MakeRequest(i);
+            }
+
             HttpListener listener = new HttpListener();
             string url = "http://localhost/";
             listener.Prefixes.Add(url);
@@ -84,8 +58,21 @@ namespace Two_Task_Async_Await
             Console.ReadLine();
         }
 
-      
+        static async void MakeRequest(int i)
+        {
+            TimeStamp("MakeReqquest "+ i + "start thread ID: "+ Thread.CurrentThread.ManagedThreadId);
+            string ret = await RequestIssuer.HttpGet("http://localhost/index.html");
+            TimeStamp("MakeRequest" + i + " end Thread ID" + Thread.CurrentThread.ManagedThreadId);
+        }
+        static async void StartConnectionListenner(HttpListener listener)
+        {
+            TimeStamp("StartConnectionListenner Thread ID: "+ Thread.CurrentThread.ManagedThreadId);
 
+            HttpListenerContext context = await listener.GetContextAsync();
 
+            semaforo.Release();
+            handler.Process(context);
+
+        }
     }
 }
